@@ -1,0 +1,172 @@
+package operacions;
+import java.sql.*;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+
+public class OperacionsBiblioLibro {
+
+	private Connection con=null;
+	private String erro="";
+	
+	public String abrirConexion() {
+		String estadoConexion = "";
+		// TODO Auto-generated constructor stub
+		try{
+		    Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
+		    String url="jdbc:mysql://localhost/test";
+			con = DriverManager.getConnection(url,"root","abc123.");
+			DatabaseMetaData meta = con.getMetaData();
+			estadoConexion = meta.getDriverVersion();
+		}
+		catch(ClassNotFoundException e){
+			erro=erro+"\n\tClase non atopada: "+e.getMessage();
+		}
+		catch(SQLException e){
+			erro=erro+"\n\tError SQL abrindo conexion: "+e.getMessage();
+		}
+		return estadoConexion;
+	}// FIN
+	
+	
+	public ArrayList<Libro> consultarLibros(){
+		ArrayList<Libro> libros = new ArrayList<Libro>();
+		ResultSet datos;
+	try {
+		PreparedStatement sentencia = con.prepareStatement("SELECT * from libro");
+		datos=sentencia.executeQuery();
+		while(datos.next()){
+			Libro libr=new Libro();
+			libr.setIdLibro(datos.getInt(1));
+			libr.setISBN(datos.getString(2));
+			libr.setTitulo(datos.getString(3));
+			libr.setAutores(datos.getString(4));
+			libr.setAno(datos.getInt(5));
+			libros.add(libr);
+		}
+	} catch (SQLException e) {
+		// TODO Auto-generated catch block
+		erro+="Error Consulta Libros: "+e.getMessage()+"\n";
+	}
+	return libros;
+	}//Fin LIstar
+
+	public Libro consultarLibro(int ide){
+		ResultSet datos;
+		Libro libr= new Libro();
+		try {
+			PreparedStatement spcon = con.prepareStatement("select * from libro where idLibro=?");
+			spcon.setInt(1, ide);
+			datos=spcon.executeQuery();
+			if(datos.next()){
+				return new Libro(datos.getInt(1),datos.getString(2),datos.getString(3),datos.getString(4),datos.getInt(5));	
+			}else erro=erro+"\n\tError, libro no encontrado.";
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			erro+="Error consultar libro: "+e.getMessage()+"\n";
+		}
+		return libr;
+	}//Fin engadir
+	
+	public int contarLibros(){
+		PreparedStatement spcontar;
+		ResultSet datos;
+		int numeroLibros=1;
+		try{
+			spcontar = con.prepareStatement("select idLibro from libro order by idLibro DESC limit 1");
+			datos=spcontar.executeQuery();
+			if(datos.next()){
+				int n = datos.getInt(1);	
+				return n;
+			}else erro=erro+"\n\tErro al contar libros.";
+		}catch (SQLException e) {
+			// TODO Auto-generated catch block
+			erro+="Error contar libros: "+e.getMessage()+"\n";
+		}
+		return numeroLibros;
+	}//Fin contar Libros
+
+	public int contarPrestamo(int ide){
+		PreparedStatement spcontar;
+		ResultSet datos;
+		int numeroLibros=0;
+		try{
+			spcontar = con.prepareStatement("select devolto from prestamo where idLibro=? and devolto='1'");
+			spcontar.setInt(1,ide);
+			datos=spcontar.executeQuery();
+			if(datos.next()){
+				int n = datos.getInt(1);	
+				return n;
+			}else erro=erro+"\n\tErro al ver prestamo.";
+		}catch (SQLException e) {
+			// TODO Auto-generated catch block
+			erro+="Error al ver prestamos: "+e.getMessage()+"\n";
+		}
+		return numeroLibros;
+	}//Fin contar Libros
+
+	public void engadirLibro(Libro lib){
+		PreparedStatement sentenciaParametrizada;
+		try {
+			sentenciaParametrizada = con.prepareStatement("INSERT INTO libro (ISBN, titulo, autores, ano) VALUES (?,?,?,?)");
+			//sentenciaParametrizada.setInt(1, lib.getIdLibro());
+			sentenciaParametrizada.setString(1, lib.getISBN());
+			sentenciaParametrizada.setString(2, lib.getTitulo());
+			sentenciaParametrizada.setString(3, lib.getAutores());
+			sentenciaParametrizada.setInt(4, lib.getAno());
+			sentenciaParametrizada.executeUpdate();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			erro+="Error engadir libro: "+e.getMessage()+"\n";
+		}
+	}//Fin engadir
+	
+	
+	public void modificarLibro(Libro l){
+		PreparedStatement sentenciaParametrizada;
+		try{
+			sentenciaParametrizada = con.prepareStatement("update libro set ISBN=?, titulo=?, autores=?, ano=? where idLibro=?");
+			//sentenciaParametrizada.setInt(1, lib.getIdLibro());
+			sentenciaParametrizada.setString(1, l.getISBN());
+			sentenciaParametrizada.setString(2, l.getTitulo());
+			sentenciaParametrizada.setString(3, l.getAutores());
+			sentenciaParametrizada.setInt(4, l.getAno());
+			sentenciaParametrizada.setInt(5, l.getIdLibro());
+			sentenciaParametrizada.executeUpdate();
+		}catch(SQLException sqe){
+			erro+="Error modificando libro: "+sqe.getMessage();
+		}	
+	}//Fin Modificar
+	
+	
+	
+	public void borrarLibro(int ide){
+		try{
+			PreparedStatement sentenciaBorrar = con.prepareStatement("DELETE FROM libro WHERE idLibro=?");
+			sentenciaBorrar.setInt(1, ide);
+			sentenciaBorrar.executeUpdate();
+		}catch(SQLException sqe){
+			erro+="Error borrando libro: "+sqe.getMessage();
+		}
+	}//Fin borrar libro por id
+	
+
+	public void cerrarConexion(){
+		try {
+			con.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			erro+="Error: "+e.getMessage()+"\n";
+		}
+	}//Fin Cerrar Conexion
+
+
+	
+	 public String getErro(){
+			return erro;
+		}
+	
+	
+}
